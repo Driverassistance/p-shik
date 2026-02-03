@@ -99,6 +99,89 @@ if (process.env.AUTO_MIGRATE === '1') {
 }
 
 // --- Start ---
+
+// ===================== Credits API (v1) =====================
+// POST /api/bot/issue-credit
+// Body: { tg_user_id, device_id, reason, days? }
+// Returns: { ok, code, expires_at }
+app.post('/api/bot/issue-credit', async (req, reply) => {
+  const body: any = req.body || {};
+  const tg_user_id = Number(body.tg_user_id);
+  const device_id = String(body.device_id || '');
+  const reason = String(body.reason || 'problem');
+  const days = Number(body.days || 7);
+
+  if (!tg_user_id || !device_id) return reply.code(400).send({ ok:false, error:'bad_request' });
+
+  const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  let code = '';
+  for (let i=0; i<15; i++) {
+    code = genCode6();
+    const rows = await q('SELECT id FROM credits WHERE code=$1 AND status=\'active\'', [code]);
+    if (rows.length === 0) break;
+  }
+  if (!code) return reply.code(500).send({ ok:false, error:'code_gen_failed' });
+
+  await q(
+    `INSERT INTO credits (code, tg_user_id, device_id, issued_reason, expires_at)
+     VALUES ($1,$2,$3,$4,$5)`,
+    [code, tg_user_id, device_id, reason, expires_at.toISOString()]
+  );
+
+  return reply.send({ ok:true, code, expires_at });
+});
+
+// POST /api/device/redeem-credit
+// Headers: x-device-api-key: <DEVICE_API_KEY>
+// Body: { device_id, code }
+// Returns: { ok, result, reason? }
+app.post('/api/device/redeem-credit', async (req, reply) => {
+  const apiKey = (req.headers['x-device-api-key'] ?? '').toString();
+  if (apiKey !== config.deviceApiKey) return reply.code(401).send({ ok:false, result:'DENIED', reason:'bad_key' });
+
+  const body: any = req.body || {};
+  const device_id = String(body.device_id || '');
+  const code = String(body.code || '').trim();
+
+  if (!device_id || !code) return reply.code(400).send({ ok:false, result:'DENIED', reason:'bad_request' });
+
+  const rows: any[] = await q(
+    `SELECT id, status, expires_at, device_id AS bound_device
+     FROM credits WHERE code=$1 LIMIT 1`,
+    [code]
+  );
+  if (rows.length === 0) return reply.send({ ok:true, result:'DENIED', reason:'not_found' });
+
+  const c = rows[0];
+  if (c.bound_device !== device_id) return reply.send({ ok:true, result:'DENIED', reason:'wrong_device' });
+  if (c.status !== 'active') return reply.send({ ok:true, result:'DENIED', reason:'not_active' });
+
+  const exp = new Date(c.expires_at);
+  if (Date.now() > exp.getTime()) {
+    await q(`UPDATE credits SET status='expired' WHERE id=$1 AND status='active'`, [c.id]);
+    await q(`INSERT INTO redemptions (credit_id, device_id, result) VALUES ($1,$2,'denied')`, [c.id, device_id]);
+    return reply.send({ ok:true, result:'DENIED', reason:'expired' });
+  }
+
+  const upd: any[] = await q(
+    `UPDATE credits SET status='used', used_at=now()
+     WHERE id=$1 AND status='active'
+     RETURNING id`,
+    [c.id]
+  );
+
+  if (upd.length === 0) {
+    await q(`INSERT INTO redemptions (credit_id, device_id, result) VALUES ($1,$2,'denied')`, [c.id, device_id]);
+    return reply.send({ ok:true, result:'DENIED', reason:'race' });
+  }
+
+  await q(`INSERT INTO redemptions (credit_id, device_id, result) VALUES ($1,$2,'success')`, [c.id, device_id]);
+  return reply.send({ ok:true, result:'OK' });
+});
+// =============================================================
+
+
 app.listen({ port: config.port, host: '0.0.0.0' })
   .then(() => app.log.info(`Up: ${config.baseUrl}`))
   .catch((err) => {
