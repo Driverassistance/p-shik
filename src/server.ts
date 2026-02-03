@@ -3,7 +3,29 @@ import { config } from './config.js';
 import { runMigrateV1 } from './migrate.js';
 import { q } from './db.js';
 
+
+async function issueCreditForUser(tg_user_id: number, device_id: string, reason: string, days: number) {
+  const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  let code = '';
+  for (let i = 0; i < 15; i++) {
+    code = genCode6();
+    const rows = await q("SELECT id FROM credits WHERE code=$1 AND status='active'", [code]);
+    if (rows.length === 0) break;
+  }
+  if (!code) throw new Error('code_gen_failed');
+
+  await q(
+    `INSERT INTO credits (code, tg_user_id, device_id, issued_reason, expires_at)
+     VALUES ($1,$2,$3,$4,$5)`,
+    [code, tg_user_id, device_id, reason, expires_at.toISOString()]
+  );
+
+  return { code, expires_at };
+}
+
 function genCode6() {
+
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
@@ -180,6 +202,66 @@ app.post('/api/device/redeem-credit', async (req, reply) => {
   return reply.send({ ok:true, result:'OK' });
 });
 // =============================================================
+
+// ===================== Telegram: Problem menu =====================
+bot.action('CB_PROBLEM_MENU', async (ctx) => {
+  await ctx.editMessageText('Выберите проблему:', {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: 'Аппарат не сработал', callback_data: 'CB_PROBLEM_NO_SPRAY' }],
+        [{ text: 'Деньги списались, пшика не было', callback_data: 'CB_PROBLEM_NO_SPRAY' }],
+        [{ text: 'Слабый пшик', callback_data: 'CB_PROBLEM_WEAK' }],
+        [{ text: 'Закончился аромат', callback_data: 'CB_PROBLEM_EMPTY' }],
+        [{ text: 'Другое', callback_data: 'CB_PROBLEM_OTHER' }],
+        [{ text: '⬅ Назад', callback_data: 'CB_MAIN_MENU' }],
+      ],
+    },
+  });
+});
+
+// Общий обработчик компенсации
+async function handleCompensation(ctx: any, reason: string, days: number) {
+  const tg_user_id = ctx.from.id;
+  const device_id = ctx.session?.device_id || 'UNKNOWN';
+
+  const { code, expires_at } = await issueCreditForUser(tg_user_id, device_id, reason, days);
+
+  await ctx.editMessageText(
+    `🎁 Компенсация сервисом
+
+Ваш бесплатный пшик готов.
+
+` +
+    `Код: *${code}*
+` +
+    `Срок действия: ${expires_at.toLocaleDateString()}
+
+` +
+    `Введите код на терминале.`,
+    { parse_mode: 'Markdown' }
+  );
+}
+
+bot.action('CB_PROBLEM_NO_SPRAY', async (ctx) => {
+  await handleCompensation(ctx, 'problem', 30);
+});
+
+bot.action('CB_PROBLEM_WEAK', async (ctx) => {
+  await handleCompensation(ctx, 'problem', 7);
+});
+
+bot.action('CB_PROBLEM_EMPTY', async (ctx) => {
+  await handleCompensation(ctx, 'problem', 7);
+});
+
+bot.action('CB_PROBLEM_OTHER', async (ctx) => {
+  await ctx.editMessageText(
+    'Если вы не нашли нужный пункт, напишите нам одним сообщением. Мы обязательно учтём ваше обращение.'
+  );
+});
+// ================================================================
+
+
 
 
 app.listen({ port: config.port, host: '0.0.0.0' })
