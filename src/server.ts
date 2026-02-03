@@ -11,6 +11,13 @@ app.get('/health', async () => {
 
 // --- Telegram webhook ---
 app.post('/webhook/telegram', async (req, reply) => {
+  // --- Telegram webhook hardening (Secret Token) ---
+  const tgSecret = (req.headers['x-telegram-bot-api-secret-token'] ?? '').toString();
+  if (tgSecret !== config.tgSecretToken) {
+    req.log.warn({ tgSecretPresent: Boolean(tgSecret) }, 'Denied telegram webhook: bad secret token');
+    return reply.code(401).send({ ok: false });
+  }
+
   // Optional security: allow only internal calls with BOT_KEY header (later we can add Telegram secret token)
   // For now keep open; we’ll lock down next step.
   const update: any = req.body;
