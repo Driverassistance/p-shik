@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { Telegraf } from 'telegraf';
 import { config } from './config.js';
 import { runMigrateV1 } from './migrate.js';
 import { q } from './db.js';
@@ -31,9 +32,19 @@ function genCode6() {
 
 import { mainMenuKeyboard, sendMessage, answerCallbackQuery, editMessage } from './telegram.js';
 
+const bot = new Telegraf(config.botToken);
+
 const app = Fastify({ logger: true });
 
 // --- Health check ---
+
+// ===================== Telegram Webhook =====================
+app.post('/telegram/webhook', async (req, reply) => {
+  await bot.handleUpdate(req.body as any);
+  reply.send({ ok: true });
+});
+// ===========================================================
+
 app.get('/health', async () => {
   return { ok: true, service: 'pshik-bot', env: config.env, time: new Date().toISOString() };
 });
@@ -264,7 +275,16 @@ bot.action('CB_PROBLEM_OTHER', async (ctx) => {
 
 
 
-app.listen({ port: config.port, host: '0.0.0.0' })
+
+// --- Telegram webhook setup ---
+if (process.env.WEBHOOK_URL) {
+  const url = process.env.WEBHOOK_URL + '/telegram/webhook';
+  bot.telegram.setWebhook(url);
+}
+// ------------------------------
+
+app.listen(
+{ port: config.port, host: '0.0.0.0' })
   .then(() => app.log.info(`Up: ${config.baseUrl}`))
   .catch((err) => {
     app.log.error(err);
