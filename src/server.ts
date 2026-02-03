@@ -247,7 +247,15 @@ bot.action('CB_PROBLEM_MENU', async (ctx) => {
 // Общий обработчик компенсации
 async function handleCompensation(ctx: any, reason: string, days: number) {
   const tg_user_id = ctx.from.id;
-  const device_id = ctx.session?.device_id || 'UNKNOWN';
+  let device_id = ctx.session?.device_id || 'UNKNOWN';
+  if (!device_id || device_id === 'UNKNOWN') {
+    const rows: any[] = await q('SELECT current_device_id FROM users WHERE tg_user_id=$1 LIMIT 1', [tg_user_id]);
+    device_id = rows?.[0]?.current_device_id || 'UNKNOWN';
+  }
+  if (!device_id || device_id === 'UNKNOWN') {
+    return ctx.editMessageText('⚠️ Пожалуйста, отсканируйте QR на аппарате (так мы привяжем компенсацию к вашей локации).');
+  }
+
 
   const { code, expires_at } = await issueCreditForUser(tg_user_id, device_id, reason, days);
 
@@ -303,6 +311,16 @@ bot.start(async (ctx) => {
   if (startPayload) {
     ctx.session.device_id = startPayload;
   }
+  const device_id = startPayload ? String(startPayload) : null;
+
+  // upsert user + last location
+  await q(
+    `INSERT INTO users (tg_user_id, current_device_id, first_seen_at, last_seen_at)
+     VALUES ($1, $2, now(), now())
+     ON CONFLICT (tg_user_id)
+     DO UPDATE SET last_seen_at=now(), current_device_id=COALESCE(EXCLUDED.current_device_id, users.current_device_id)`,
+    [ctx.from.id, device_id]
+  );
 
   await ctx.reply(
     '👋 Добро пожаловать в *П-Шик*\n\nЯ помогу быстро и без лишних вопросов.',
