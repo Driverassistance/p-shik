@@ -337,7 +337,7 @@ bot.start(async (ctx) => {
         inline_keyboard: [
           [{ text: '🛠 Сервис', callback_data: 'CB_SERVICE_MENU' }],
           [{ text: '⚠️ Проблема', callback_data: 'CB_PROBLEM_MENU' }],
-          [{ text: '🌸 Ароматы', callback_data: 'CB_AROMAS_MENU' }],
+          [{ text: 'Ароматы', callback_data: 'CB_AROMAS_MENU' }],
           [{ text: '📄 Сертификаты', callback_data: 'CB_CERTS_MENU' }],
           [{ text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_MENU' }],
         ],
@@ -378,7 +378,7 @@ function renderMainMenu() {
           { text: '⚠️ Проблема', callback_data: 'CB_PROBLEM_MENU' }
         ],
         [
-          { text: '🌸 Ароматы', callback_data: 'CB_AROMAS_MENU' },
+          { text: 'Ароматы', callback_data: 'CB_AROMAS_MENU' },
           { text: '📄 Сертификаты', callback_data: 'CB_CERTS_MENU' }
         ],
         [
@@ -390,10 +390,10 @@ function renderMainMenu() {
 }
 
 async function goMainMenu(ctx) {
-  if (ctx.updateType === 'callback_query') {
-    return ctx.editMessageText('🏠 *Главное меню*', renderMainMenu());
-  }
-  return ctx.reply('🏠 *Главное меню*', renderMainMenu());
+  // UX: always send a NEW menu message so it appears at the bottom (auto-scroll)
+  try { await ctx.reply('🏠 *Главное меню*', renderMainMenu()); } catch (_) {}
+  // Try to delete previous message to avoid clutter (safe)
+  try { if (ctx.updateType === 'callback_query') await ctx.deleteMessage(); } catch (_) {}
 }
 
 // ---- MAIN MENU BUTTON ----
@@ -417,7 +417,7 @@ bot.action('CB_SERVICE_MENU', async (ctx) => {
           [{ text: '💨 1 или 2 пшика', callback_data: 'CB_SERVICE_SPRAY' }],
           [{ text: '🎯 Куда распылять', callback_data: 'CB_SERVICE_WHERE' }],
           [{ text: '⚠️ Безопасность', callback_data: 'CB_SERVICE_SAFE' }],
-          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+          [{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]
         ]
       }
     }
@@ -430,7 +430,7 @@ bot.action('CB_SERVICE_HOW', async (ctx) => {
     '📖 *Как пользоваться*\n\n1️⃣ Выберите аромат\n2️⃣ Оплатите\n3️⃣ Нажмите кнопку на аппарате',
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],[{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]] }
     }
   );
 });
@@ -441,7 +441,7 @@ bot.action('CB_SERVICE_PAY', async (ctx) => {
     '💳 *Оплата*\n\nQR (Kaspi / Halyk / Freedom)\nNFC / карта',
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],[{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]] }
     }
   );
 });
@@ -452,7 +452,7 @@ bot.action('CB_SERVICE_SPRAY', async (ctx) => {
     '💨 *1 или 2 пшика*\n\n1 — лёгко\n2 — насыщенно',
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],[{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]] }
     }
   );
 });
@@ -463,7 +463,7 @@ bot.action('CB_SERVICE_WHERE', async (ctx) => {
     '🎯 *Куда распылять*\n\nШея / за ухо / одежда\n❌ Не в лицо',
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],[{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]] }
     }
   );
 });
@@ -474,7 +474,7 @@ bot.action('CB_SERVICE_SAFE', async (ctx) => {
     '⚠️ *Безопасность*\n\nИндивидуальная реакция возможна',
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],[{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]] }
     }
   );
 });
@@ -484,14 +484,14 @@ bot.action('CB_SERVICE_SAFE', async (ctx) => {
 bot.action('CB_AROMAS_MENU', async (ctx) => {
   try { await ctx.answerCbQuery(); } catch (_) {}
   await ctx.editMessageText(
-    '🌸 *Ароматы*',
+    '*Ароматы*',
     {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🩷 Женские', callback_data: 'CB_AROMAS_WOMEN' }],
-          [{ text: '⚫ Мужские', callback_data: 'CB_AROMAS_MEN' }],
-          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+          [{ text: '👩 Женские', callback_data: 'CB_AROMAS_WOMEN' }],
+          [{ text: '👨 Мужские', callback_data: 'CB_AROMAS_MEN' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]
         ]
       }
     }
@@ -501,7 +501,7 @@ bot.action('CB_AROMAS_MENU', async (ctx) => {
 bot.action('CB_AROMAS_WOMEN', async (ctx) => {
   try { await ctx.answerCbQuery(); } catch (_) {}
   await ctx.editMessageText(
-    '🩷 *Женские ароматы*\n\nСкоро: W1–W5',
+    '👩 *Женские ароматы*\n\nСкоро: W1–W5',
     {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_AROMAS_MENU' }]] }
@@ -512,7 +512,7 @@ bot.action('CB_AROMAS_WOMEN', async (ctx) => {
 bot.action('CB_AROMAS_MEN', async (ctx) => {
   try { await ctx.answerCbQuery(); } catch (_) {}
   await ctx.editMessageText(
-    '⚫ *Мужские ароматы*\n\nСкоро: M1–M5',
+    '👨 *Мужские ароматы*\n\nСкоро: M1–M5',
     {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_AROMAS_MENU' }]] }
@@ -526,7 +526,7 @@ bot.action('CB_CERTS_MENU', async (ctx) => {
   try { await ctx.answerCbQuery(); } catch (_) {}
   await ctx.editMessageText(
     '📄 *Сертификаты*\n\nРаздел в разработке',
-    { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] } }
+    { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]] } }
   );
 });
 
@@ -534,7 +534,7 @@ bot.action('CB_FEEDBACK_MENU', async (ctx) => {
   try { await ctx.answerCbQuery(); } catch (_) {}
   await ctx.editMessageText(
     '💬 *Обратная связь*\n\nРаздел в разработке',
-    { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] } }
+    { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]] } }
   );
 });
 
