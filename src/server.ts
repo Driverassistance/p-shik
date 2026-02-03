@@ -32,6 +32,19 @@ async function issueCreditForUser(tg_user_id: number, device_id: string, reason:
   return { code, expires_at };
 }
 
+
+function extractDeviceIdFromStart(ctx: any): string | null {
+  // Telegraf may provide ctx.startPayload, but also user can type "/start BANYA_01"
+  const text = (ctx.message && ctx.message.text) ? String(ctx.message.text) : '';
+  const parts = text.split(' ').map((x: string) => x.trim()).filter(Boolean);
+  const payload = (ctx.startPayload && String(ctx.startPayload).trim()) || (parts.length >= 2 ? parts[1] : '');
+  const device_id = payload ? String(payload).trim() : '';
+  // allow only our standard format TYPE_NN (e.g., BANYA_01)
+  if (!device_id) return null;
+  if (!/^[A-Z]+_\d{2}$/.test(device_id)) return null;
+  return device_id;
+}
+
 function genCode6() {
 
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -247,15 +260,11 @@ bot.action('CB_PROBLEM_MENU', async (ctx) => {
 // Общий обработчик компенсации
 async function handleCompensation(ctx: any, reason: string, days: number) {
   const tg_user_id = ctx.from.id;
-  let device_id = ctx.session?.device_id || 'UNKNOWN';
-  if (!device_id || device_id === 'UNKNOWN') {
-    const rows: any[] = await q('SELECT current_device_id FROM users WHERE tg_user_id=$1 LIMIT 1', [tg_user_id]);
-    device_id = rows?.[0]?.current_device_id || 'UNKNOWN';
-  }
+  const rows: any[] = await q('SELECT current_device_id FROM users WHERE tg_user_id=$1 LIMIT 1', [tg_user_id]);
+  const device_id = rows?.[0]?.current_device_id || 'UNKNOWN';
   if (!device_id || device_id === 'UNKNOWN') {
     return ctx.editMessageText('⚠️ Пожалуйста, отсканируйте QR на аппарате (так мы привяжем компенсацию к вашей локации).');
   }
-
 
   const { code, expires_at } = await issueCreditForUser(tg_user_id, device_id, reason, days);
 
@@ -306,12 +315,10 @@ if (process.env.WEBHOOK_URL) {
 // ------------------------------
 
 // ===================== Telegram /start =====================
+
 bot.start(async (ctx) => {
-  const startPayload = ctx.startPayload; // device_id from QR
-  if (startPayload) {
-    ctx.session.device_id = startPayload;
-  }
-  const device_id = startPayload ? String(startPayload) : null;
+  const tg_user_id = ctx.from.id;
+  const device_id = extractDeviceIdFromStart(ctx);
 
   // upsert user + last location
   await q(
@@ -319,7 +326,7 @@ bot.start(async (ctx) => {
      VALUES ($1, $2, now(), now())
      ON CONFLICT (tg_user_id)
      DO UPDATE SET last_seen_at=now(), current_device_id=COALESCE(EXCLUDED.current_device_id, users.current_device_id)`,
-    [ctx.from.id, device_id]
+    [tg_user_id, device_id]
   );
 
   await ctx.reply(
