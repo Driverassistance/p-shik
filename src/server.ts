@@ -356,3 +356,186 @@ app.listen(
     app.log.error(err);
     process.exit(1);
   });
+
+
+// === UI_V2_START ===
+
+// ---- Telegraf error catcher ----
+bot.catch(async (err, ctx) => {
+  try {
+    console.error('Telegraf error:', err);
+  } catch (_) {}
+});
+
+// ---- MAIN MENU RENDER ----
+function renderMainMenu() {
+  return {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: '🛠 Сервис', callback_data: 'CB_SERVICE_MENU' },
+          { text: '⚠️ Проблема', callback_data: 'CB_PROBLEM_MENU' }
+        ],
+        [
+          { text: '🌸 Ароматы', callback_data: 'CB_AROMAS_MENU' },
+          { text: '📄 Сертификаты', callback_data: 'CB_CERTS_MENU' }
+        ],
+        [
+          { text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_MENU' }
+        ]
+      ]
+    }
+  };
+}
+
+async function goMainMenu(ctx) {
+  if (ctx.updateType === 'callback_query') {
+    return ctx.editMessageText('🏠 *Главное меню*', renderMainMenu());
+  }
+  return ctx.reply('🏠 *Главное меню*', renderMainMenu());
+}
+
+// ---- MAIN MENU BUTTON ----
+bot.action('CB_MAIN_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await goMainMenu(ctx);
+});
+
+// ================= SERVICE =================
+
+bot.action('CB_SERVICE_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '🛠 *Сервис П-Шик*\n\nВыберите, что вас интересует:',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '📖 Как пользоваться', callback_data: 'CB_SERVICE_HOW' }],
+          [{ text: '💳 Оплата', callback_data: 'CB_SERVICE_PAY' }],
+          [{ text: '💨 1 или 2 пшика', callback_data: 'CB_SERVICE_SPRAY' }],
+          [{ text: '🎯 Куда распылять', callback_data: 'CB_SERVICE_WHERE' }],
+          [{ text: '⚠️ Безопасность', callback_data: 'CB_SERVICE_SAFE' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+bot.action('CB_SERVICE_HOW', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '📖 *Как пользоваться*\n\n1️⃣ Выберите аромат\n2️⃣ Оплатите\n3️⃣ Нажмите кнопку на аппарате',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+    }
+  );
+});
+
+bot.action('CB_SERVICE_PAY', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '💳 *Оплата*\n\nQR (Kaspi / Halyk / Freedom)\nNFC / карта',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+    }
+  );
+});
+
+bot.action('CB_SERVICE_SPRAY', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '💨 *1 или 2 пшика*\n\n1 — лёгко\n2 — насыщенно',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+    }
+  );
+});
+
+bot.action('CB_SERVICE_WHERE', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '🎯 *Куда распылять*\n\nШея / за ухо / одежда\n❌ Не в лицо',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+    }
+  );
+});
+
+bot.action('CB_SERVICE_SAFE', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '⚠️ *Безопасность*\n\nИндивидуальная реакция возможна',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }]] }
+    }
+  );
+});
+
+// ================= AROMAS =================
+
+bot.action('CB_AROMAS_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '🌸 *Ароматы*',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🩷 Женские', callback_data: 'CB_AROMAS_WOMEN' }],
+          [{ text: '⚫ Мужские', callback_data: 'CB_AROMAS_MEN' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+bot.action('CB_AROMAS_WOMEN', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '🩷 *Женские ароматы*\n\nСкоро: W1–W5',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_AROMAS_MENU' }]] }
+    }
+  );
+});
+
+bot.action('CB_AROMAS_MEN', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '⚫ *Мужские ароматы*\n\nСкоро: M1–M5',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_AROMAS_MENU' }]] }
+    }
+  );
+});
+
+// ================= STUBS =================
+
+bot.action('CB_CERTS_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '📄 *Сертификаты*\n\nРаздел в разработке',
+    { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] } }
+  );
+});
+
+bot.action('CB_FEEDBACK_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '💬 *Обратная связь*\n\nРаздел в разработке',
+    { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] } }
+  );
+});
+
+// === UI_V2_END ===
