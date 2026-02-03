@@ -1,6 +1,6 @@
 import { pool } from './db.js';
 
-const sql = `
+export const MIGRATE_V1_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   tg_user_id BIGINT UNIQUE NOT NULL,
@@ -18,14 +18,9 @@ CREATE TABLE IF NOT EXISTS devices (
 );
 `;
 
-async function main() {
-  if (!process.env.DATABASE_URL) throw new Error('Missing env: DATABASE_URL');
-  await pool.query(sql);
-  console.log('✅ migrate v1 ok');
-  await pool.end();
+export async function runMigrateV1() {
+  const DB_URL = process.env.DATABASE_URL || process.env.POSTGRES_DB;
+  if (!DB_URL) throw new Error('Missing env: DATABASE_URL');
+  await pool.query(MIGRATE_V1_SQL);
+  return true;
 }
-
-main().catch((e) => {
-  console.error('❌ migrate failed', e);
-  process.exit(1);
-});

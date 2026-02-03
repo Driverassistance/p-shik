@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --env-file=.env dist/server.js",
-    "build": "tsup src/server.ts src/migrate.ts --format esm --target es2022 --clean",
+    "build": "tsup src/server.ts src/migrate.ts src/migrate_cli.ts --format esm --target es2022 --clean",
     "start": "node dist/server.js",
-    "migrate": "node dist/migrate.js"
+    "migrate": "node dist/migrate_cli.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

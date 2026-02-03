@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { config } from './config.js';
+import { runMigrateV1 } from './migrate.js';
 import { q } from './db.js';
 import { mainMenuKeyboard, sendMessage, answerCallbackQuery, editMessage } from './telegram.js';
 
@@ -79,6 +80,18 @@ app.post('/webhook/telegram', async (req, reply) => {
     reply.code(200).send({ ok: true }); // Telegram must get 200
   }
 });
+
+// --- Auto-migrate (Railway only, controlled by env) ---
+if (process.env.AUTO_MIGRATE === '1') {
+  try {
+    app.log.info('AUTO_MIGRATE=1 → running migrate v1');
+    await runMigrateV1();
+    app.log.info('✅ migrate v1 ok');
+  } catch (e: any) {
+    app.log.error(e, '❌ migrate failed');
+    process.exit(1);
+  }
+}
 
 // --- Start ---
 app.listen({ port: config.port, host: '0.0.0.0' })
