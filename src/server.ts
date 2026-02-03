@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { config } from './config.js';
+import { q } from './db.js';
 import { mainMenuKeyboard, sendMessage, answerCallbackQuery, editMessage } from './telegram.js';
 
 const app = Fastify({ logger: true });
@@ -25,6 +26,26 @@ app.post('/webhook/telegram', async (req, reply) => {
   try {
     // /start
     if (update?.message?.text?.startsWith('/start')) {
+      const textMsg = update.message.text || '';
+      const parts = textMsg.split(' ');
+      const deviceId = parts[1] || null;
+
+      if (deviceId) {
+        await q(
+          `INSERT INTO devices (device_id) VALUES ($1)
+           ON CONFLICT (device_id) DO NOTHING`,
+          [deviceId]
+        );
+      }
+
+      await q(
+        `INSERT INTO users (tg_user_id, current_device_id)
+         VALUES ($1, $2)
+         ON CONFLICT (tg_user_id)
+         DO UPDATE SET last_seen_at = now(), current_device_id = EXCLUDED.current_device_id`,
+        [update.message.from.id, deviceId]
+      );
+
       const chatId = update.message.chat.id as number;
       const text =
         'П-Шик — сервис ароматов.\n\nВыберите раздел:';
