@@ -16,6 +16,26 @@ CREATE TABLE IF NOT EXISTS devices (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS credits (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  tg_user_id BIGINT NOT NULL,
+  device_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active', -- active|used|expired|revoked
+  issued_reason TEXT NOT NULL,           -- problem|feedback|promo|loyalty
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  used_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS redemptions (
+  id SERIAL PRIMARY KEY,
+  credit_id INT NOT NULL REFERENCES credits(id),
+  device_id TEXT NOT NULL,
+  redeemed_at TIMESTAMPTZ DEFAULT now(),
+  result TEXT NOT NULL                  -- success|denied|error
+);
+
 `;
 
 export async function runMigrateV1() {
