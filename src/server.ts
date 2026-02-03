@@ -292,7 +292,18 @@ bot.start(async (ctx) => {
 
   await ctx.reply(
     '👋 Добро пожаловать в *П-Шик*\n\nЯ помогу быстро и без лишних вопросов.',
-    { parse_mode: 'Markdown', ...MAIN_MENU }
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🛠 Сервис', callback_data: 'CB_SERVICE_MENU' }],
+          [{ text: '⚠️ Проблема', callback_data: 'CB_PROBLEM_MENU' }],
+          [{ text: '🌸 Ароматы', callback_data: 'CB_AROMAS_MENU' }],
+          [{ text: '📄 Сертификаты', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_MENU' }],
+        ],
+      },
+    }
   );
 });
 // ==========================================================
