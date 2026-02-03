@@ -283,6 +283,22 @@ if (process.env.WEBHOOK_URL) {
 }
 // ------------------------------
 
+// ===================== Telegram /start =====================
+bot.start(async (ctx) => {
+  const startPayload = ctx.startPayload; // device_id from QR
+  if (startPayload) {
+    ctx.session.device_id = startPayload;
+  }
+
+  await ctx.reply(
+    '👋 Добро пожаловать в *П-Шик*\n\nЯ помогу быстро и без лишних вопросов.',
+    { parse_mode: 'Markdown', ...MAIN_MENU }
+  );
+});
+// ==========================================================
+
+
+
 app.listen(
 { port: config.port, host: '0.0.0.0' })
   .then(() => app.log.info(`Up: ${config.baseUrl}`))
