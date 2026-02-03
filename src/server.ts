@@ -8,6 +8,13 @@ import { q } from './db.js';
 async function issueCreditForUser(tg_user_id: number, device_id: string, reason: string, days: number) {
   const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
+  // One active code per user per device: revoke previous active
+  await q(
+    `UPDATE credits SET status='revoked'
+     WHERE tg_user_id=$1 AND device_id=$2 AND status='active'`,
+    [tg_user_id, device_id]
+  );
+
   let code = '';
   for (let i = 0; i < 15; i++) {
     code = genCode6();
@@ -147,6 +154,13 @@ app.post('/api/bot/issue-credit', async (req, reply) => {
   if (!tg_user_id || !device_id) return reply.code(400).send({ ok:false, error:'bad_request' });
 
   const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  // One active code per user per device: revoke previous active
+  await q(
+    `UPDATE credits SET status='revoked'
+     WHERE tg_user_id=$1 AND device_id=$2 AND status='active'`,
+    [tg_user_id, device_id]
+  );
 
   let code = '';
   for (let i=0; i<15; i++) {
