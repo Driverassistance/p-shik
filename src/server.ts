@@ -2,6 +2,11 @@ import Fastify from 'fastify';
 import { config } from './config.js';
 import { runMigrateV1 } from './migrate.js';
 import { q } from './db.js';
+
+function genCode6() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 import { mainMenuKeyboard, sendMessage, answerCallbackQuery, editMessage } from './telegram.js';
 
 const app = Fastify({ logger: true });

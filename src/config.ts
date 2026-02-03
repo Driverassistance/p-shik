@@ -14,6 +14,7 @@ export const config = {
   botUsername: process.env.BOT_USERNAME ?? 'pshikapp_bot',
   botKey: req('BOT_KEY'),
   tgSecretToken: req('TG_SECRET_TOKEN'),
+  deviceApiKey: req('DEVICE_API_KEY'),
 
   baseUrl: process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
 };
