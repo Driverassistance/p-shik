@@ -730,3 +730,79 @@ bot.action('CB_A2_M4', (ctx) => showAromaV2(ctx, 'M4', 'M'));
 bot.action('CB_A2_M5', (ctx) => showAromaV2(ctx, 'M5', 'M'));
 
 // === AROMAS_V2_END ===
+
+
+// === CERTS_V1_START ===
+
+// Сертификаты — меню
+bot.action('CB_CERTS_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '📄 *Сертификаты и безопасность*\n\nМы открыты и ничего не скрываем. Выберите раздел:',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🧾 Сертификаты оборудования', callback_data: 'CB_CERTS_EQUIP' }],
+          [{ text: '📦 Официальность поставок', callback_data: 'CB_CERTS_DOCS' }],
+          [{ text: '⚠️ Предупреждения', callback_data: 'CB_CERTS_WARN' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// Сертификаты оборудования
+bot.action('CB_CERTS_EQUIP', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '🧾 *Сертификаты оборудования*\n\nСертификаты будут доступны здесь (PDF/фото).\n\nП-Шик работает на оборудовании, рассчитанном на общественные места и ежедневное использование.',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// Официальность поставок / документы
+bot.action('CB_CERTS_DOCS', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '📦 *Официальность поставок*\n\nМы работаем как ТОО в Казахстане.\nДокументы и подтверждения поставок/закупок будем публиковать здесь по мере обновления.\n\nЦель — максимальная прозрачность и доверие.',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// Предупреждения
+bot.action('CB_CERTS_WARN', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '⚠️ *Предупреждения и безопасность*\n\n• Возможна индивидуальная реакция\n• Не распылять в глаза/лицо\n• При аллергии лучше не использовать\n\nЕсли вам нужен совет — напишите через “Обратная связь”.',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// === CERTS_V1_END ===
