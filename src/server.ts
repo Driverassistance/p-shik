@@ -489,8 +489,8 @@ bot.action('CB_AROMAS_MENU', async (ctx) => {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '👩 Женские', callback_data: 'CB_AROMAS_WOMEN' }],
-          [{ text: '👨 Мужские', callback_data: 'CB_AROMAS_MEN' }],
+          [{ text: '👩 Женские', callback_data: 'CB_AROMAS_WOMEN_LIST' }],
+          [{ text: '👨 Мужские', callback_data: 'CB_AROMAS_MEN_LIST' }],
           [{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]
         ]
       }
@@ -637,3 +637,96 @@ bot.action('CB_AROMA_M4', (ctx) => showAromaCard(ctx, 'M4'));
 bot.action('CB_AROMA_M5', (ctx) => showAromaCard(ctx, 'M5'));
 
 // === AROMAS_CARDS_V1_END ===
+
+
+// === AROMAS_V2_START ===
+
+// Women list (v2)
+bot.action('CB_AROMAS_WOMEN_LIST', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '👩 *Женские ароматы*\n\nВыберите аромат:',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'W1', callback_data: 'CB_A2_W1' }],
+          [{ text: 'W2', callback_data: 'CB_A2_W2' }],
+          [{ text: 'W3', callback_data: 'CB_A2_W3' }],
+          [{ text: 'W4', callback_data: 'CB_A2_W4' }],
+          [{ text: 'W5', callback_data: 'CB_A2_W5' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_AROMAS_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// Men list (v2)
+bot.action('CB_AROMAS_MEN_LIST', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '👨 *Мужские ароматы*\n\nВыберите аромат:',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'M1', callback_data: 'CB_A2_M1' }],
+          [{ text: 'M2', callback_data: 'CB_A2_M2' }],
+          [{ text: 'M3', callback_data: 'CB_A2_M3' }],
+          [{ text: 'M4', callback_data: 'CB_A2_M4' }],
+          [{ text: 'M5', callback_data: 'CB_A2_M5' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_AROMAS_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+function aromaV2Text(code, gender) {
+  const title = (gender === 'W') ? '👩 *Женский аромат*' : '👨 *Мужской аромат*';
+  return (
+    title + ' — *' + code + '*\n\n' +
+    '✅ *Для чего:* работа / прогулка / вечер\n' +
+    '⏰ *Когда:* утро / день / ночь\n\n' +
+    '💨 *Сколько пшиков:*\n' +
+    '• 1 — лёгкий, аккуратный\n' +
+    '• 2 — насыщенный\n\n' +
+    'Совет: начните с 1, если пробуете впервые.'
+  );
+}
+
+async function showAromaV2(ctx, code, gender) {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  const backCb = (gender === 'W') ? 'CB_AROMAS_WOMEN_LIST' : 'CB_AROMAS_MEN_LIST';
+  await ctx.editMessageText(
+    aromaV2Text(code, gender),
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: backCb }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+}
+
+// Women cards (v2)
+bot.action('CB_A2_W1', (ctx) => showAromaV2(ctx, 'W1', 'W'));
+bot.action('CB_A2_W2', (ctx) => showAromaV2(ctx, 'W2', 'W'));
+bot.action('CB_A2_W3', (ctx) => showAromaV2(ctx, 'W3', 'W'));
+bot.action('CB_A2_W4', (ctx) => showAromaV2(ctx, 'W4', 'W'));
+bot.action('CB_A2_W5', (ctx) => showAromaV2(ctx, 'W5', 'W'));
+
+// Men cards (v2)
+bot.action('CB_A2_M1', (ctx) => showAromaV2(ctx, 'M1', 'M'));
+bot.action('CB_A2_M2', (ctx) => showAromaV2(ctx, 'M2', 'M'));
+bot.action('CB_A2_M3', (ctx) => showAromaV2(ctx, 'M3', 'M'));
+bot.action('CB_A2_M4', (ctx) => showAromaV2(ctx, 'M4', 'M'));
+bot.action('CB_A2_M5', (ctx) => showAromaV2(ctx, 'M5', 'M'));
+
+// === AROMAS_V2_END ===
