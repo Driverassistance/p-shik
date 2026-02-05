@@ -339,7 +339,7 @@ bot.start(async (ctx) => {
           [{ text: '⚠️ Проблема', callback_data: 'CB_PROBLEM_MENU' }],
           [{ text: 'Ароматы', callback_data: 'CB_AROMAS_MENU' }],
           [{ text: '📄 Сертификаты', callback_data: 'CB_CERTS_V2_MENU' }],
-          [{ text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_MENU' }],
+          [{ text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_V2_MENU' }],
         ],
       },
     }
@@ -382,7 +382,7 @@ function renderMainMenu() {
           { text: '📄 Сертификаты', callback_data: 'CB_CERTS_V2_MENU' }
         ],
         [
-          { text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_MENU' }
+          { text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_V2_MENU' }
         ]
       ]
     }
@@ -878,3 +878,222 @@ bot.action('CB_CERTS_V2_WARN', async (ctx) => {
 });
 
 // === CERTS_V2_END ===
+
+
+// === FEEDBACK_V2_START ===
+
+const FEEDBACK_GIFT_COOLDOWN_DAYS = 7;
+
+// feedback menu
+bot.action('CB_FEEDBACK_V2_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '💬 *Обратная связь*\n\nВыберите действие:',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⭐ Оставить отзыв', callback_data: 'CB_FB_RATE' }],
+          [{ text: '✍️ Написать нам', callback_data: 'CB_FB_WRITE' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// rate
+bot.action('CB_FB_RATE', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '⭐ *Оцените сервис:*',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '👍 Понравилось', callback_data: 'CB_FB_LIKE' }],
+          [{ text: '😐 Нормально', callback_data: 'CB_FB_OK' }],
+          [{ text: '👎 Не понравилось', callback_data: 'CB_FB_BAD' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+async function fbSave(tg_user_id, device_id, rating, reason, message) {
+  await q(
+    `INSERT INTO feedback (tg_user_id, device_id, rating, reason, message, created_at)
+     VALUES ($1,$2,$3,$4,$5, now())`,
+    [tg_user_id, device_id, rating, reason, message]
+  );
+}
+
+async function getUserDeviceId(tg_user_id) {
+  const rows = await q('SELECT current_device_id FROM users WHERE tg_user_id=$1 LIMIT 1', [tg_user_id]);
+  return rows?.[0]?.current_device_id || 'UNKNOWN';
+}
+
+// like -> save immediately (no reason)
+bot.action('CB_FB_LIKE', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  const tg_user_id = ctx.from.id;
+  const device_id = await getUserDeviceId(tg_user_id);
+  await fbSave(tg_user_id, device_id, 'like', null, null);
+
+  await ctx.editMessageText(
+    'Спасибо за отзыв 🙌\n\nХотите подарок?',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🎁 Получить подарок', callback_data: 'CB_FB_GIFT' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// ok/bad -> ask reason
+bot.action('CB_FB_OK', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    'Понял 🙌\n\nЧто именно?',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Сильный', callback_data: 'CB_FB_REASON_OK_STRONG' }],
+          [{ text: 'Слабый', callback_data: 'CB_FB_REASON_OK_WEAK' }],
+          [{ text: 'Не мой профиль', callback_data: 'CB_FB_REASON_OK_PROFILE' }],
+          [{ text: 'Другое', callback_data: 'CB_FB_REASON_OK_OTHER' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_FB_RATE' }]
+        ]
+      }
+    }
+  );
+});
+
+bot.action('CB_FB_BAD', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    'Жаль 😕\n\nЧто именно не понравилось?',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Сильный', callback_data: 'CB_FB_REASON_BAD_STRONG' }],
+          [{ text: 'Слабый', callback_data: 'CB_FB_REASON_BAD_WEAK' }],
+          [{ text: 'Не мой профиль', callback_data: 'CB_FB_REASON_BAD_PROFILE' }],
+          [{ text: 'Другое', callback_data: 'CB_FB_REASON_BAD_OTHER' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_FB_RATE' }]
+        ]
+      }
+    }
+  );
+});
+
+async function fbFinalizeWithReason(ctx, rating, reason) {
+  const tg_user_id = ctx.from.id;
+  const device_id = await getUserDeviceId(tg_user_id);
+  await fbSave(tg_user_id, device_id, rating, reason, null);
+
+  await ctx.editMessageText(
+    'Спасибо, мы учтём 🙌\n\nХотите подарок?',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🎁 Получить подарок', callback_data: 'CB_FB_GIFT' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+}
+
+// OK reasons
+bot.action('CB_FB_REASON_OK_STRONG', (ctx) => fbFinalizeWithReason(ctx, 'ok', 'strong'));
+bot.action('CB_FB_REASON_OK_WEAK', (ctx) => fbFinalizeWithReason(ctx, 'ok', 'weak'));
+bot.action('CB_FB_REASON_OK_PROFILE', (ctx) => fbFinalizeWithReason(ctx, 'ok', 'profile'));
+bot.action('CB_FB_REASON_OK_OTHER', (ctx) => fbFinalizeWithReason(ctx, 'ok', 'other'));
+
+// BAD reasons
+bot.action('CB_FB_REASON_BAD_STRONG', (ctx) => fbFinalizeWithReason(ctx, 'dislike', 'strong'));
+bot.action('CB_FB_REASON_BAD_WEAK', (ctx) => fbFinalizeWithReason(ctx, 'dislike', 'weak'));
+bot.action('CB_FB_REASON_BAD_PROFILE', (ctx) => fbFinalizeWithReason(ctx, 'dislike', 'profile'));
+bot.action('CB_FB_REASON_BAD_OTHER', (ctx) => fbFinalizeWithReason(ctx, 'dislike', 'other'));
+
+// Gift with cooldown
+bot.action('CB_FB_GIFT', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  const tg_user_id = ctx.from.id;
+  const device_id = await getUserDeviceId(tg_user_id);
+
+  if (!device_id || device_id === 'UNKNOWN') {
+    return ctx.editMessageText(
+      '⚠️ Чтобы выдать подарок, отсканируйте QR на аппарате (привязка к локации).',
+      { reply_markup: { inline_keyboard: [[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] } }
+    );
+  }
+
+  // cooldown: 1 gift per X days (issued_reason='feedback')
+  const rows = await q(
+    `SELECT 1
+     FROM credits
+     WHERE tg_user_id=$1 AND issued_reason='feedback'
+       AND created_at > now() - ($2 || ' days')::interval
+     LIMIT 1`,
+    [tg_user_id, String(FEEDBACK_GIFT_COOLDOWN_DAYS)]
+  );
+
+  if (rows && rows.length > 0) {
+    return ctx.editMessageText(
+      '🎁 Подарок уже выдавался недавно.\n\nПопробуйте позже 🙂',
+      { reply_markup: { inline_keyboard: [[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] } }
+    );
+  }
+
+  // issue credit (uses existing helper)
+  const { code, expires_at } = await issueCreditForUser(tg_user_id, device_id, 'feedback', 14);
+
+  await ctx.editMessageText(
+    `🎁 Ваш подарок готов!\n\n*Код:* \`${code}\`\nДействует до: *${expires_at.toISOString().slice(0,10)}*\n\nВведите код на аппарате.`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] }
+    }
+  );
+});
+
+// Write us (free text)
+bot.action('CB_FB_WRITE', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '✍️ Напишите сообщение (до 500 символов).\n\nМы читаем каждое и улучшаем сервис.',
+    {
+      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }]] }
+    }
+  );
+  // set mode (simple in-memory via Telegraf state on ctx - safe fallback via users table later)
+  ctx.__WAITING_FB_TEXT__ = true;
+});
+
+// capture free text (best-effort)
+bot.on('text', async (ctx, next) => {
+  try {
+    if (!ctx.__WAITING_FB_TEXT__) return next();
+    const tg_user_id = ctx.from.id;
+    const device_id = await getUserDeviceId(tg_user_id);
+    const msg = String(ctx.message.text || '').slice(0, 500);
+    await fbSave(tg_user_id, device_id, null, null, msg);
+    ctx.__WAITING_FB_TEXT__ = false;
+    await ctx.reply('Спасибо! Сообщение принято 🙌', { reply_markup: { inline_keyboard: [[{ text:'🏠 Меню', callback_data:'CB_MAIN_MENU' }]] } });
+  } catch (e) {
+    return next();
+  }
+});
+
+// === FEEDBACK_V2_END ===
