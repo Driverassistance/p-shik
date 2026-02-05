@@ -338,7 +338,7 @@ bot.start(async (ctx) => {
           [{ text: '🛠 Сервис', callback_data: 'CB_SERVICE_MENU' }],
           [{ text: '⚠️ Проблема', callback_data: 'CB_PROBLEM_MENU' }],
           [{ text: 'Ароматы', callback_data: 'CB_AROMAS_MENU' }],
-          [{ text: '📄 Сертификаты', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '📄 Сертификаты', callback_data: 'CB_CERTS_V2_MENU' }],
           [{ text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_MENU' }],
         ],
       },
@@ -379,7 +379,7 @@ function renderMainMenu() {
         ],
         [
           { text: 'Ароматы', callback_data: 'CB_AROMAS_MENU' },
-          { text: '📄 Сертификаты', callback_data: 'CB_CERTS_MENU' }
+          { text: '📄 Сертификаты', callback_data: 'CB_CERTS_V2_MENU' }
         ],
         [
           { text: '💬 Обратная связь', callback_data: 'CB_FEEDBACK_MENU' }
@@ -763,7 +763,7 @@ bot.action('CB_CERTS_EQUIP', async (ctx) => {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_V2_MENU' }],
           [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
         ]
       }
@@ -780,7 +780,7 @@ bot.action('CB_CERTS_DOCS', async (ctx) => {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_V2_MENU' }],
           [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
         ]
       }
@@ -797,7 +797,7 @@ bot.action('CB_CERTS_WARN', async (ctx) => {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_MENU' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_V2_MENU' }],
           [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
         ]
       }
@@ -806,3 +806,75 @@ bot.action('CB_CERTS_WARN', async (ctx) => {
 });
 
 // === CERTS_V1_END ===
+
+
+// === CERTS_V2_START ===
+
+bot.action('CB_CERTS_V2_MENU', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '📄 *Сертификаты и безопасность*\n\nМы открыты и ничего не скрываем. Выберите раздел:',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🧾 Сертификаты оборудования', callback_data: 'CB_CERTS_V2_EQUIP' }],
+          [{ text: '📦 Официальность поставок', callback_data: 'CB_CERTS_V2_DOCS' }],
+          [{ text: '⚠️ Предупреждения', callback_data: 'CB_CERTS_V2_WARN' }],
+          [{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+bot.action('CB_CERTS_V2_EQUIP', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '🧾 *Сертификаты оборудования*\n\nЗдесь будут опубликованы сертификаты (PDF/фото).\n\nОборудование рассчитано на общественные места и ежедневное использование.',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_V2_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+bot.action('CB_CERTS_V2_DOCS', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '📦 *Официальность поставок*\n\nМы работаем как ТОО в Казахстане.\nДокументы и подтверждения будем публиковать здесь по мере обновления.\n\nЦель — прозрачность и доверие.',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_V2_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+bot.action('CB_CERTS_V2_WARN', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
+  await ctx.editMessageText(
+    '⚠️ *Предупреждения и безопасность*\n\n• Возможна индивидуальная реакция\n• Не распылять в глаза/лицо\n• При аллергии лучше не использовать\n\nЕсли хотите оставить сообщение — зайдите в “Обратная связь”.',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: 'CB_CERTS_V2_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
+
+// === CERTS_V2_END ===
