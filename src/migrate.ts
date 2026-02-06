@@ -39,6 +39,24 @@ CREATE TABLE IF NOT EXISTS redemptions (
 `;
 
 export async function runMigrateV1() {
+  // --- MIGRATE: feedback table (D1) ---
+  await q(`
+    CREATE TABLE IF NOT EXISTS feedback (
+      id BIGSERIAL PRIMARY KEY,
+      tg_user_id BIGINT NOT NULL,
+      device_id TEXT,
+      rating TEXT,
+      reason TEXT,
+      message TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await q(`CREATE INDEX IF NOT EXISTS idx_feedback_tg_user_id ON feedback (tg_user_id);`);
+  await q(`CREATE INDEX IF NOT EXISTS idx_feedback_device_id ON feedback (device_id);`);
+  await q(`CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);`);
+
+
   const DB_URL = process.env.DATABASE_URL || process.env.POSTGRES_DB;
   if (!DB_URL) throw new Error('Missing env: DATABASE_URL');
   await pool.query(MIGRATE_V1_SQL);
