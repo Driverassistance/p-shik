@@ -8,17 +8,19 @@ import { q } from './db.js';
 async function issueCreditForUser(tg_user_id: number, device_id: string, reason: string, days: number) {
   const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-  // One active code per user per device: revoke previous active
+  // One active code per user: revoke previous active
   await q(
     `UPDATE credits SET status='revoked'
-     WHERE tg_user_id=$1 AND device_id=$2 AND status='active'`,
-    [tg_user_id, device_id]
+     WHERE tg_user_id=$1 AND status='active'`,
+    [tg_user_id]
   );
+
+
 
   let code = '';
   for (let i = 0; i < 15; i++) {
     code = genCode6();
-    const rows = await q("SELECT id FROM credits WHERE code=$1 AND status='active'", [code]);
+    const rows = await q("SELECT id FROM credits WHERE code=$1", [code]);
     if (rows.length === 0) break;
   }
   if (!code) throw new Error('code_gen_failed');
@@ -178,7 +180,7 @@ app.post('/api/bot/issue-credit', async (req, reply) => {
   let code = '';
   for (let i=0; i<15; i++) {
     code = genCode6();
-    const rows = await q('SELECT id FROM credits WHERE code=$1 AND status=\'active\'', [code]);
+    const rows = await q('SELECT id FROM credits WHERE code=$1', [code]);
     if (rows.length === 0) break;
   }
   if (!code) return reply.code(500).send({ ok:false, error:'code_gen_failed' });
