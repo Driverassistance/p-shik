@@ -307,6 +307,30 @@ bot.action('CB_PROBLEM_OTHER', async (ctx) => {
 
 
 
+// --- DB bootstrap (runs once on server start) ---
+async function ensureDbBootstrap() {
+  try {
+    await q(`
+      CREATE TABLE IF NOT EXISTS feedback (
+        id BIGSERIAL PRIMARY KEY,
+        tg_user_id BIGINT NOT NULL,
+        device_id TEXT,
+        rating TEXT,
+        reason TEXT,
+        message TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+    await q(`CREATE INDEX IF NOT EXISTS idx_feedback_tg_user_id ON feedback (tg_user_id);`);
+    await q(`CREATE INDEX IF NOT EXISTS idx_feedback_device_id ON feedback (device_id);`);
+    await q(`CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);`);
+    console.log("✅ DB bootstrap ok (feedback)");
+  } catch (e) {
+    console.error("❌ DB bootstrap failed", e);
+    process.exit(1);
+  }
+}
+
 await ensureDbBootstrap();
 
 // --- Telegram webhook setup ---
