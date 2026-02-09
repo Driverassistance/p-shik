@@ -307,6 +307,8 @@ bot.action('CB_PROBLEM_OTHER', async (ctx) => {
 
 
 
+await ensureDbBootstrap();
+
 // --- Telegram webhook setup ---
 if (process.env.WEBHOOK_URL) {
   const url = process.env.WEBHOOK_URL + '/telegram/webhook';
