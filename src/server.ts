@@ -1102,11 +1102,13 @@ bot.action('CB_FB_GIFT', async (ctx) => {
 bot.action('CB_FB_WRITE', async (ctx) => {
   try { await ctx.answerCbQuery(); } catch (_) {}
   await ctx.editMessageText(
-    '✍️ Напишите сообщение (до 500 символов).\n\nМы читаем каждое и улучшаем сервис.',
-    {
-      reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }]] }
-    }
-  );
+      '✍️ Напишите сообщение (до 500 символов).
+
+Мы читаем каждое и улучшаем качество.',
+      {
+        reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }]] }
+      }
+    );
   // set mode (simple in-memory via Telegraf state on ctx - safe fallback via users table later)
   ctx.__WAITING_FB_TEXT__ = true;
 });
