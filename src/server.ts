@@ -911,6 +911,8 @@ bot.action('CB_CERTS_V2_WARN', async (ctx) => {
 // === FEEDBACK_V2_START ===
 
 const FEEDBACK_GIFT_COOLDOWN_DAYS = 7;
+const FEEDBACK_TEXT_COOLDOWN_HOURS = 6;
+const WAITING_FB_TEXT_USERS = new Set<number>();
 
 // feedback menu
 bot.action('CB_FEEDBACK_V2_MENU', async (ctx) => {
