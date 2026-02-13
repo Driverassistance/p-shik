@@ -12,10 +12,11 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
-    "pg": "^8.18.0"
+    "pg": "^8.18.0",
+    "telegraf": "^4.16.3"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.19.8",
     "@types/pg": "^8.16.0",
     "tsup": "^8.2.4",
     "typescript": "^5.6.3"

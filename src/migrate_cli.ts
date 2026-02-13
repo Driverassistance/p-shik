@@ -1,6 +1,6 @@
-import { runMigrateV1 } from './migrate.js';
+import { runMigrateV1, runMigrateV2 } from './migrate.js';
 
-runMigrateV1()
+runMigrateV1().then(() => runMigrateV2())
   .then(() => {
     console.log('✅ migrate v1 ok');
     process.exit(0);

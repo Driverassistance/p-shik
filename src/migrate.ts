@@ -73,6 +73,42 @@ CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);
 COMMIT;
 `;
 
+const MIGRATE_V2_SQL = `
+BEGIN;
+
+-- USER_STATE (state manager)
+CREATE TABLE IF NOT EXISTS user_state (
+  tg_user_id BIGINT PRIMARY KEY,
+  state TEXT NOT NULL DEFAULT 'idle',
+  payload JSONB,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_state_state ON user_state (state);
+CREATE INDEX IF NOT EXISTS idx_user_state_updated_at ON user_state (updated_at);
+
+COMMIT;
+`;
+
+export async function runMigrateV2() {
+  await ensureEnv();
+
+  // schema_migrations должна существовать до проверки версии
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  const version = 'v2';
+  if (await hasMigration(version)) return true;
+
+  await pool.query(MIGRATE_V2_SQL);
+  await markMigration(version);
+  return true;
+}
+
 async function ensureEnv() {
   const DB_URL = process.env.DATABASE_URL || process.env.POSTGRES_DB;
   if (!DB_URL) throw new Error('Missing env: DATABASE_URL');

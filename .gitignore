@@ -3,3 +3,7 @@ dist
 .env
 .env.*
 .DS_Store
+
+# local
+node/
+step04.patch

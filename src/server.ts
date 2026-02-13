@@ -1,9 +1,8 @@
 import Fastify from 'fastify';
 import { Telegraf } from 'telegraf';
 import { config } from './config.js';
-import { runMigrateV1 } from './migrate.js';
+import { runMigrateV1, runMigrateV2 } from './migrate.js';
 import { q } from './db.js';
-
 
 async function issueCreditForUser(tg_user_id: number, device_id: string, reason: string, days: number) {
   const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -145,7 +144,8 @@ app.post('/webhook/telegram', async (req, reply) => {
 if (process.env.AUTO_MIGRATE === '1') {
   try {
     app.log.info('AUTO_MIGRATE=1 → running migrate v1');
-    await runMigrateV1();
+      await runMigrateV1();
+      await runMigrateV2();
     app.log.info('✅ migrate v1 ok');
   } catch (e: any) {
     app.log.error(e, '❌ migrate failed');
@@ -912,7 +912,6 @@ bot.action('CB_CERTS_V2_WARN', async (ctx) => {
 
 const FEEDBACK_GIFT_COOLDOWN_DAYS = 7;
 const FEEDBACK_TEXT_COOLDOWN_HOURS = 6;
-const WAITING_FB_TEXT_USERS = new Set<number>();
 
 // feedback menu
 bot.action('CB_FEEDBACK_V2_MENU', async (ctx) => {
@@ -965,8 +964,39 @@ async function getUserDeviceId(tg_user_id) {
   return rows?.[0]?.current_device_id || 'UNKNOWN';
 }
 
+// ================= USER_STATE (DB state manager) =================
+async function setUserState(tg_user_id, state, payload = null) {
+  await q(
+    `INSERT INTO user_state (tg_user_id, state, payload, updated_at)
+     VALUES ($1, $2, $3, now())
+     ON CONFLICT (tg_user_id)
+     DO UPDATE SET state = EXCLUDED.state, payload = EXCLUDED.payload, updated_at = now()`,
+    [tg_user_id, state, payload]
+  );
+}
+
+async function getUserState(tg_user_id) {
+  const r = await q(
+    `SELECT state, payload
+     FROM user_state
+     WHERE tg_user_id = $1
+     LIMIT 1`,
+    [tg_user_id]
+  );
+  if (!r || r.length === 0) return { state: "idle", payload: null };
+  return { state: r[0].state || "idle", payload: r[0].payload ?? null };
+}
+
+async function clearUserState(tg_user_id) {
+  await setUserState(tg_user_id, "idle", null);
+}
+// ===============================================================
+
+
 // like -> save immediately (no reason)
 bot.action('CB_FB_LIKE', async (ctx) => {
+
+
   try { await ctx.answerCbQuery(); } catch (_) {}
   const tg_user_id = ctx.from.id;
   const device_id = await getUserDeviceId(tg_user_id);
@@ -1098,30 +1128,29 @@ bot.action('CB_FB_GIFT', async (ctx) => {
   );
 });
 
-// Write us (free text)
-bot.action('CB_FB_WRITE', async (ctx) => {
-  try { await ctx.answerCbQuery(); } catch (_) {}
-  await ctx.editMessageText(
-      '✍️ Напишите сообщение (до 500 символов).
 
-Мы читаем каждое и улучшаем качество.',
-      {
-        reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }]] }
-      }
+// Write us (free text)
+  bot.action('CB_FB_WRITE', async (ctx) => {
+    try { await ctx.answerCbQuery(); } catch (_) {}
+    await ctx.editMessageText(
+      '✍️ Напишите сообщение (до 500 символов).\n\nМы читаем каждое и улучшаем качество.',
+      { reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }]] } }
     );
-  // set mode (simple in-memory via Telegraf state on ctx - safe fallback via users table later)
-  ctx.__WAITING_FB_TEXT__ = true;
-});
+
+    // waiting mode (in-memory)
+    await setUserState(ctx.from.id, 'fb_write', null);
+  });
 
 // capture free text (best-effort)
 bot.on('text', async (ctx, next) => {
   try {
-    if (!ctx.__WAITING_FB_TEXT__) return next();
-    const tg_user_id = ctx.from.id;
+      const tg_user_id = ctx.from.id;
+      const st = await getUserState(tg_user_id);
+      if (st.state !== 'fb_write') return next();
     const device_id = await getUserDeviceId(tg_user_id);
     const msg = String(ctx.message.text || '').slice(0, 500);
     await fbSave(tg_user_id, device_id, null, null, msg);
-    ctx.__WAITING_FB_TEXT__ = false;
+      await clearUserState(tg_user_id);
     await ctx.reply('Спасибо! Сообщение принято 🙌', { reply_markup: { inline_keyboard: [[{ text:'🏠 Меню', callback_data:'CB_MAIN_MENU' }]] } });
   } catch (e) {
     return next();
