@@ -911,6 +911,10 @@ bot.action('CB_CERTS_V2_WARN', async (ctx) => {
 // === FEEDBACK_V2_START ===
 
 const FEEDBACK_GIFT_COOLDOWN_DAYS = 7;
+// FB_WRITE pending (in-memory fallback, no DB needed)
+const FB_WRITE_TTL_MS = 30 * 60 * 1000;
+const FB_WRITE_PENDING = new Map<number, number>();
+
 const FEEDBACK_TEXT_COOLDOWN_HOURS = 6;
 
 // feedback menu
@@ -1139,6 +1143,8 @@ bot.action('CB_FB_GIFT', async (ctx) => {
 
     // waiting mode (in-memory)
     await setUserState(ctx.from.id, 'fb_write', null);
+    FB_WRITE_PENDING.set(ctx.from.id, Date.now() + FB_WRITE_TTL_MS);
+
   });
 
 // capture free text (best-effort)
@@ -1146,12 +1152,19 @@ bot.on('text', async (ctx, next) => {
   try {
       const tg_user_id = ctx.from.id;
 
-      const st = await getUserState(tg_user_id);
-      console.log('[FB_WRITE] text from', tg_user_id, 'state=', st?.state, 'text=', ctx.message?.text);
-      if (!st || st.state !== 'fb_write') return next();
+      const pendingUntil = FB_WRITE_PENDING.get(tg_user_id) || 0;
+      const pending = pendingUntil > Date.now();
+      const st = pending ? { state: 'fb_write' } : await getUserState(tg_user_id);
+      console.log('[FB_WRITE] text from', tg_user_id, 'pending=', pending, 'state=', st?.state, 'text=', ctx.message?.text);
+      if (st && st.state !== 'fb_write') return next();
+
+
+
     const device_id = await getUserDeviceId(tg_user_id);
     const msg = String(ctx.message.text || '').slice(0, 500);
     await fbSave(tg_user_id, device_id, null, null, msg);
+      FB_WRITE_PENDING.delete(tg_user_id);
+
       await clearUserState(tg_user_id);
     return await ctx.reply('Спасибо! Сообщение принято 🙌', { reply_markup: { inline_keyboard: [[{ text:'🏠 Меню', callback_data:'CB_MAIN_MENU' }]] } });
   } catch (e) {
