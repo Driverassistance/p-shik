@@ -1145,6 +1145,8 @@ bot.action('CB_FB_GIFT', async (ctx) => {
 bot.on('text', async (ctx, next) => {
   try {
       const tg_user_id = ctx.from.id;
+      console.log('[FB_WRITE] text from', tg_user_id, 'state=', st?.state, 'text=', ctx.message?.text);
+
       const st = await getUserState(tg_user_id);
       if (st.state !== 'fb_write') return next();
     const device_id = await getUserDeviceId(tg_user_id);
