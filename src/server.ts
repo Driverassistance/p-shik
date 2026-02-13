@@ -357,7 +357,7 @@ bot.start(async (ctx) => {
     [tg_user_id, device_id]
   );
 
-  await ctx.reply(
+  return await ctx.reply(
     '👋 Добро пожаловать в *П-Шик*\n\nЯ помогу быстро и без лишних вопросов.',
     {
       parse_mode: 'Markdown',
@@ -419,7 +419,7 @@ function renderMainMenu() {
 
 async function goMainMenu(ctx) {
   // UX: always send a NEW menu message so it appears at the bottom (auto-scroll)
-  try { await ctx.reply('🏠 *Главное меню*', renderMainMenu()); } catch (_) {}
+  try { return await ctx.reply('🏠 *Главное меню*', renderMainMenu()); } catch (_) {}
   // Try to delete previous message to avoid clutter (safe)
   try { if (ctx.updateType === 'callback_query') await ctx.deleteMessage(); } catch (_) {}
 }
@@ -1151,7 +1151,7 @@ bot.on('text', async (ctx, next) => {
     const msg = String(ctx.message.text || '').slice(0, 500);
     await fbSave(tg_user_id, device_id, null, null, msg);
       await clearUserState(tg_user_id);
-    await ctx.reply('Спасибо! Сообщение принято 🙌', { reply_markup: { inline_keyboard: [[{ text:'🏠 Меню', callback_data:'CB_MAIN_MENU' }]] } });
+    return await ctx.reply('Спасибо! Сообщение принято 🙌', { reply_markup: { inline_keyboard: [[{ text:'🏠 Меню', callback_data:'CB_MAIN_MENU' }]] } });
   } catch (e) {
     return next();
   }
