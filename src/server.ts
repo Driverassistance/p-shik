@@ -1171,6 +1171,7 @@ bot.on('text', async (ctx, next) => {
       const pendingUntil = FB_WRITE_PENDING.get(tg_user_id) || 0;
       const pending = pendingUntil > Date.now();
       const st = pending ? { state: 'fb_write' } : await getUserState(tg_user_id);
+        if (st?.state !== 'fb_write') return next();
       console.log('[FB_WRITE] text from', tg_user_id, 'pending=', pending, 'state=', st?.state, 'text=', ctx.message?.text);
       if (st && st.state !== 'fb_write') return next();
 
