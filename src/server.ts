@@ -326,6 +326,15 @@ async function ensureDbBootstrap() {
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_tg_user_id ON feedback (tg_user_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_device_id ON feedback (device_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);`);
+          // --- user_state (for flows like "Написать нам") ---
+    await q(`CREATE TABLE IF NOT EXISTS user_state (tg_user_id BIGINT PRIMARY KEY,
+          state TEXT,
+          data JSONB,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `);
+
+      await q(`CREATE INDEX IF NOT EXISTS idx_user_state_updated_at ON user_state (updated_at);`);
     console.log("✅ DB bootstrap ok (feedback)");
   } catch (e) {
     console.error("❌ DB bootstrap failed", e);
