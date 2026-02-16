@@ -1154,7 +1154,7 @@ bot.action('CB_FB_GIFT', async (ctx) => {
     try { await ctx.answerCbQuery(); } catch (_) {}
     await ctx.editMessageText(
       '✍️ Напишите сообщение (до 500 символов).\n\nМы читаем каждое и улучшаем качество.',
-      { reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }]] } }
+      { reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад', callback_data: 'CB_FEEDBACK_V2_MENU' }],[{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]] } }
     );
 
     // waiting mode (in-memory)
