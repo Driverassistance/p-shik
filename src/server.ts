@@ -55,6 +55,25 @@ import { mainMenuKeyboard, sendMessage, answerCallbackQuery, editMessage } from 
 
 const bot = new Telegraf(config.botToken);
 
+// --- Thanks queue runner (every 60s) ---
+setInterval(() => processThanksQueue(bot).catch((e:any)=>console.error("processThanksQueue error", e)), 60_000);
+// --------------------------------------
+
+// --- touch tracker: any interaction schedules thanks message ---
+bot.use(async (ctx, next) => {
+  try {
+    const tg_user_id = ctx?.from?.id;
+    if (tg_user_id) await markUserTouch(tg_user_id);
+  } catch (e) {
+    console.error('markUserTouch error', e);
+  }
+  return next();
+});
+// -------------------------------------------------------------
+
+
+
+
 const app = Fastify({ logger: true });
 
 // --- Health check ---
@@ -343,7 +362,33 @@ async function ensureDbBootstrap() {
     await q(`ALTER TABLE user_state ADD COLUMN IF NOT EXISTS payload JSONB;`);
     await q(`ALTER TABLE user_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;`);
 
-    console.log("✅ DB bootstrap ok (feedback, user_state)");
+      // --- thanks_queue (auto thank-you message) ---
+      await q(`
+        CREATE TABLE IF NOT EXISTS thanks_queue (
+          tg_user_id BIGINT PRIMARY KEY,
+          due_at TIMESTAMPTZ NOT NULL,
+          last_touch_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          status TEXT NOT NULL DEFAULT 'pending', -- pending|sent
+          sent_at TIMESTAMPTZ
+        );
+      `);
+      await q(`CREATE INDEX IF NOT EXISTS idx_thanks_queue_due_at ON thanks_queue (due_at);`);
+      await q(`CREATE INDEX IF NOT EXISTS idx_thanks_queue_status ON thanks_queue (status);`);
+
+
+    
+      // --- user_touch (thank-you followups + loyalty) ---
+      await q(`
+        CREATE TABLE IF NOT EXISTS user_touch (
+          tg_user_id BIGINT PRIMARY KEY,
+          last_touch_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          next_thanks_at TIMESTAMPTZ,
+          last_thanks_at TIMESTAMPTZ
+        );
+      `);
+      await q(`CREATE INDEX IF NOT EXISTS idx_user_touch_next_thanks_at ON user_touch (next_thanks_at);`);
+
+      console.log("✅ DB bootstrap ok (feedback, user_state)");
   } catch (e) {
     console.error("❌ DB bootstrap failed", e);
     process.exit(1);
@@ -983,6 +1028,71 @@ async function getUserDeviceId(tg_user_id) {
   const rows = await q('SELECT current_device_id FROM users WHERE tg_user_id=$1 LIMIT 1', [tg_user_id]);
   return rows?.[0]?.current_device_id || 'UNKNOWN';
 }
+
+// --- THANKS (auto follow-up) ---
+const THANKS_DELAY_MINUTES = Number(process.env.THANKS_DELAY_MINUTES || 60);
+
+async function markUserTouch(tg_user_id: number) {
+  // если next_thanks_at уже стоит в будущем — не трогаем (не спамим)
+  await q(
+    `
+    INSERT INTO user_touch (tg_user_id, last_touch_at, next_thanks_at)
+    VALUES ($1, now(), now() + ($2 || ' minutes')::interval)
+    ON CONFLICT (tg_user_id) DO UPDATE
+      SET last_touch_at = now(),
+          next_thanks_at = CASE
+            WHEN user_touch.next_thanks_at IS NULL THEN now() + ($2 || ' minutes')::interval
+            WHEN user_touch.next_thanks_at < now() THEN now() + ($2 || ' minutes')::interval
+            ELSE user_touch.next_thanks_at
+          END
+    `,
+    [tg_user_id, String(THANKS_DELAY_MINUTES)]
+  );
+}
+
+async function processThanksQueue(bot: any) {
+  try {
+    const rows = await q(
+      `
+      SELECT tg_user_id
+      FROM user_touch
+      WHERE next_thanks_at IS NOT NULL
+        AND next_thanks_at <= now()
+      LIMIT 50
+      `
+    );
+
+    for (const r of rows) {
+      const uid = Number(r.tg_user_id);
+      if (!uid) continue;
+
+      const text =
+        "Спасибо, что выбрали *П-Шик* 🙌\n\n" +
+        "Мы очень дорожим репутацией и благодарим вас за доверие. " +
+        "В наших аппаратах только оригинальный парфюм, подтверждённый сертификатами.\n\n" +
+        "Если вдруг появятся вопросы или сомнения — напишите нам в боте через “Обратная связь”.\n\n" +
+        "*Всё, что вам нужно — это П-Шик.*\n" +
+        "Удачи вам и вашей семье 🤝";
+
+      try {
+        await bot.telegram.sendMessage(uid, text, {
+          parse_mode: "Markdown",
+          reply_markup: { inline_keyboard: [[{ text: "🏠 Меню", callback_data: "CB_MAIN_MENU" }]] }
+        });
+      } catch (e) {
+        // если юзер заблокировал/не доступен — просто не падаем
+      }
+
+      await q(
+        `UPDATE user_touch SET last_thanks_at=now(), next_thanks_at=NULL WHERE tg_user_id=$1`,
+        [uid]
+      );
+    }
+  } catch (e) {
+    // не валим сервер из-за планировщика
+  }
+}
+// --- /THANKS ---
 
 // ================= USER_STATE (DB state manager) =================
 async function setUserState(tg_user_id, state, payload = null) {
