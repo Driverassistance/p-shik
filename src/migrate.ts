@@ -86,6 +86,10 @@ CREATE TABLE IF NOT EXISTS user_state (
 
 CREATE INDEX IF NOT EXISTS idx_user_state_state ON user_state (state);
 CREATE INDEX IF NOT EXISTS idx_user_state_updated_at ON user_state (updated_at);
+-- In case user_state was created earlier without some columns
+ALTER TABLE user_state ADD COLUMN IF NOT EXISTS payload JSONB;
+ALTER TABLE user_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 
 COMMIT;
 `;
@@ -153,8 +157,12 @@ export async function runMigrateV1() {
  */
 export async function main() {
   try {
-    const ok = await runMigrateV1();
-    if (ok) console.log('✅ migrate v1 ok');
+    const ok1 = await runMigrateV1();
+    if (ok1) console.log('✅ migrate v1 ok');
+
+    const ok2 = await runMigrateV2();
+    if (ok2) console.log('✅ migrate v2 ok');
+
     process.exit(0);
   } catch (e: any) {
     console.error('❌ migrate failed', e);
