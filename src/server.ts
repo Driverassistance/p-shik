@@ -11,7 +11,7 @@ async function issueCreditForUser(tg_user_id: number, device_id: string, reason:
   await q(
     `UPDATE credits SET status='revoked'
      WHERE tg_user_id=$1 AND status='active'`,
-    [tg_user_id]
+    [tg_user_id, device_id]
   );
 
 
@@ -312,6 +312,7 @@ bot.action('CB_PROBLEM_OTHER', async (ctx) => {
 // --- DB bootstrap (runs once on server start) ---
 async function ensureDbBootstrap() {
   try {
+    // --- feedback ---
     await q(`
       CREATE TABLE IF NOT EXISTS feedback (
         id BIGSERIAL PRIMARY KEY,
@@ -326,23 +327,23 @@ async function ensureDbBootstrap() {
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_tg_user_id ON feedback (tg_user_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_device_id ON feedback (device_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);`);
-          // --- user_state (for flows like "Написать нам") ---
-    await q(`CREATE TABLE IF NOT EXISTS user_state (
-  tg_user_id BIGINT PRIMARY KEY,
-  state TEXT NOT NULL,
-  payload JSONB,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 
--- ensure columns exist (safe for old schema)
-ALTER TABLE user_state ADD COLUMN IF NOT EXISTS state TEXT;
-ALTER TABLE user_state ADD COLUMN IF NOT EXISTS payload JSONB;
-ALTER TABLE user_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
-UPDATE user_state SET updated_at = now() WHERE updated_at IS NULL;
-      `);
+    // --- user_state (for flows like "Написать нам") ---
+    await q(`
+      CREATE TABLE IF NOT EXISTS user_state (
+        tg_user_id BIGINT PRIMARY KEY,
+        state TEXT NOT NULL DEFAULT 'idle',
+        payload JSONB,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
 
-      await q(`CREATE INDEX IF NOT EXISTS idx_user_state_updated_at ON user_state (updated_at);`);
-    console.log("✅ DB bootstrap ok (feedback)");
+    // harden old schemas (safe even if columns exist)
+    await q(`ALTER TABLE user_state ADD COLUMN IF NOT EXISTS state TEXT;`);
+    await q(`ALTER TABLE user_state ADD COLUMN IF NOT EXISTS payload JSONB;`);
+    await q(`ALTER TABLE user_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;`);
+
+    console.log("✅ DB bootstrap ok (feedback, user_state)");
   } catch (e) {
     console.error("❌ DB bootstrap failed", e);
     process.exit(1);
@@ -350,7 +351,6 @@ UPDATE user_state SET updated_at = now() WHERE updated_at IS NULL;
 }
 
 await ensureDbBootstrap();
-
 // --- Telegram webhook setup ---
 if (process.env.WEBHOOK_URL) {
   const url = process.env.WEBHOOK_URL + '/telegram/webhook';
