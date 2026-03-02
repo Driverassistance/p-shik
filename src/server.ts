@@ -11,7 +11,7 @@ async function issueCreditForUser(tg_user_id: number, device_id: string, reason:
   await q(
     `UPDATE credits SET status='revoked'
      WHERE tg_user_id=$1 AND status='active'`,
-    [tg_user_id]
+    [tg_user_id, device_id]
   );
 
 
