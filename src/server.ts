@@ -304,7 +304,15 @@ async function handleCompensation(ctx: any, reason: string, days: number) {
        VALUES ($1,$2,$3,'manual')`,
       [tg_user_id, device_id, reason]
     );
-
+// уведомление администратору
+try {
+  await bot.telegram.sendMessage(
+    Number(process.env.ADMIN_TG_ID || 473294026),
+    `⚠️ Manual compensation\n\nUser: ${tg_user_id}\nDevice: ${device_id}\nReason: ${reason}`
+  );
+} catch (e) {
+  console.error('Admin notify error', e);
+}
     return ctx.editMessageText(
       '✅ Заявка принята.\n\nМы передали обращение техническому специалисту для проверки работы аппарата.\nПосле проверки мы свяжемся с вами здесь в боте.'
     );
