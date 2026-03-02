@@ -378,6 +378,17 @@ async function ensureDbBootstrap() {
 
 
     
+      // --- loyalty_claims (1 free spray per 30 days) ---
+      await q(`
+        CREATE TABLE IF NOT EXISTS loyalty_claims (
+          tg_user_id BIGINT NOT NULL,
+          device_id TEXT NOT NULL,
+          last_claim_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (tg_user_id, device_id)
+        );
+      `);
+      await q(`CREATE INDEX IF NOT EXISTS idx_loyalty_claims_last_claim_at ON loyalty_claims (last_claim_at);`);
+
       // --- user_touch (thank-you followups + loyalty) ---
       await q(`
         CREATE TABLE IF NOT EXISTS user_touch (
@@ -514,6 +525,7 @@ bot.action('CB_SERVICE_MENU', async (ctx) => {
           [{ text: '💨 1 или 2 пшика', callback_data: 'CB_SERVICE_SPRAY' }],
           [{ text: '🎯 Куда распылять', callback_data: 'CB_SERVICE_WHERE' }],
           [{ text: '⚠️ Безопасность', callback_data: 'CB_SERVICE_SAFE' }],
+          [{ text: '🎁 Бесплатный пшик', callback_data: 'CB_LOYALTY_CLAIM' }],
           [{ text: '⬅️ Назад', callback_data: 'CB_MAIN_MENU' }]
         ]
       }
@@ -575,7 +587,80 @@ bot.action('CB_SERVICE_SAFE', async (ctx) => {
     }
   );
 });
+bot.action('CB_LOYALTY_CLAIM', async (ctx) => {
+  try { await ctx.answerCbQuery(); } catch (_) {}
 
+  const tg_user_id = ctx.from.id;
+  const device_id = await getUserDeviceId(tg_user_id);
+
+  if (!device_id || device_id === 'UNKNOWN') {
+    return await ctx.editMessageText(
+      '🎁 *Бесплатный пшик раз в 30 дней*\n\nЧтобы активировать подарок, откройте бот через QR аппарата.',
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],
+            [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+          ]
+        }
+      }
+    );
+  }
+
+  const rows = await q(
+    `SELECT last_claim_at
+     FROM loyalty_claims
+     WHERE tg_user_id=$1 AND device_id=$2
+     LIMIT 1`,
+    [tg_user_id, device_id]
+  );
+
+  const last = rows?.[0]?.last_claim_at ? new Date(rows[0].last_claim_at) : null;
+  const now = new Date();
+  const ms30d = 30 * 24 * 60 * 60 * 1000;
+
+  if (last && (now.getTime() - last.getTime()) < ms30d) {
+    const next = new Date(last.getTime() + ms30d);
+    const nextStr = next.toISOString().slice(0, 10);
+
+    return await ctx.editMessageText(
+      `🎁 *Бесплатный пшик раз в 30 дней*\n\nСледующий подарок будет доступен: *${nextStr}*`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],
+            [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+          ]
+        }
+      }
+    );
+  }
+
+  const { code } = await issueCreditForUser(tg_user_id, device_id, 'loyalty', 30);
+
+  await q(
+    `INSERT INTO loyalty_claims (tg_user_id, device_id, last_claim_at)
+     VALUES ($1,$2, now())
+     ON CONFLICT (tg_user_id, device_id)
+     DO UPDATE SET last_claim_at=EXCLUDED.last_claim_at`,
+    [tg_user_id, device_id]
+  );
+
+  return await ctx.editMessageText(
+    `🎁 *Ваш бесплатный пшик готов!*\n\nКод: *${code}*`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⬅️ Назад', callback_data: 'CB_SERVICE_MENU' }],
+          [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+        ]
+      }
+    }
+  );
+});
 // ================= AROMAS =================
 
 bot.action('CB_AROMAS_MENU', async (ctx) => {
