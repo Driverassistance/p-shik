@@ -466,7 +466,11 @@ if (process.env.WEBHOOK_URL) {
 
 // ===================== Telegram /start =====================
 
-bot.start(async (ctx) => {
+bot.command('myid', async (ctx) => {
+  return ctx.reply(String(ctx.from.id));
+});
+
+
   const tg_user_id = ctx.from.id;
   const device_id = extractDeviceIdFromStart(ctx);
 
