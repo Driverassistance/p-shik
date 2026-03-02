@@ -269,7 +269,7 @@ bot.action('CB_PROBLEM_MENU', async (ctx) => {
     reply_markup: {
       inline_keyboard: [
         [{ text: 'Аппарат не сработал', callback_data: 'CB_PROBLEM_NO_SPRAY' }],
-        [{ text: 'Деньги списались, пшика не было', callback_data: 'CB_PROBLEM_NO_SPRAY' }],
+        [{ text: 'Деньги списались, пшика не было', callback_data: 'CB_PROBLEM_CHARGED' }],
         [{ text: 'Слабый пшик', callback_data: 'CB_PROBLEM_WEAK' }],
         [{ text: 'Закончился аромат', callback_data: 'CB_PROBLEM_EMPTY' }],
         [{ text: 'Другое', callback_data: 'CB_PROBLEM_OTHER' }],
@@ -335,6 +335,10 @@ bot.action('CB_PROBLEM_NO_SPRAY', async (ctx) => {
   await handleCompensation(ctx, 'problem', 30);
 });
 
+
+bot.action('CB_PROBLEM_CHARGED', async (ctx) => {
+  await handleCompensation(ctx, 'charged', 30);
+});
 bot.action('CB_PROBLEM_WEAK', async (ctx) => {
   await handleCompensation(ctx, 'problem', 7);
 });
