@@ -11,7 +11,7 @@ async function issueCreditForUser(tg_user_id: number, device_id: string, reason:
   await q(
     `UPDATE credits SET status='revoked'
      WHERE tg_user_id=$1 AND status='active'`,
-    [tg_user_id, device_id]
+    [tg_user_id]
   );
 
 
@@ -21,7 +21,6 @@ async function issueCreditForUser(tg_user_id: number, device_id: string, reason:
     code = genCode6();
     const rows = await q("SELECT id FROM credits WHERE code=$1", [code]);
     
-      console.log('[THANKS] due rows=', rows?.length || 0);
 if (rows.length === 0) break;
   }
   if (!code) throw new Error('code_gen_failed');
@@ -195,7 +194,7 @@ app.post('/api/bot/issue-credit', async (req, reply) => {
   await q(
     `UPDATE credits SET status='revoked'
      WHERE tg_user_id=$1 AND device_id=$2 AND status='active'`,
-    [tg_user_id, device_id]
+    [tg_user_id]
   );
 
   let code = '';
@@ -424,7 +423,7 @@ bot.start(async (ctx) => {
      VALUES ($1, $2, now(), now())
      ON CONFLICT (tg_user_id)
      DO UPDATE SET last_seen_at=now(), current_device_id=COALESCE(EXCLUDED.current_device_id, users.current_device_id)`,
-    [tg_user_id, device_id]
+    [tg_user_id]
   );
 
   return await ctx.reply(
