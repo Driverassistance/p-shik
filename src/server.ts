@@ -20,7 +20,9 @@ async function issueCreditForUser(tg_user_id: number, device_id: string, reason:
   for (let i = 0; i < 15; i++) {
     code = genCode6();
     const rows = await q("SELECT id FROM credits WHERE code=$1", [code]);
-    if (rows.length === 0) break;
+    
+      console.log('[THANKS] due rows=', rows?.length || 0);
+if (rows.length === 0) break;
   }
   if (!code) throw new Error('code_gen_failed');
 
@@ -383,10 +385,17 @@ async function ensureDbBootstrap() {
           tg_user_id BIGINT PRIMARY KEY,
           last_touch_at TIMESTAMPTZ NOT NULL DEFAULT now(),
           next_thanks_at TIMESTAMPTZ,
-          last_thanks_at TIMESTAMPTZ
+          last_thanks_at TIMESTAMPTZ,
+          thanks_locked_at TIMESTAMPTZ,
+          thanks_processed_at TIMESTAMPTZ
         );
       `);
       await q(`CREATE INDEX IF NOT EXISTS idx_user_touch_next_thanks_at ON user_touch (next_thanks_at);`);
+
+      await q(`ALTER TABLE user_touch ADD COLUMN IF NOT EXISTS thanks_locked_at TIMESTAMPTZ;`);
+      await q(`ALTER TABLE user_touch ADD COLUMN IF NOT EXISTS thanks_processed_at TIMESTAMPTZ;`);
+
+      await q(`CREATE INDEX IF NOT EXISTS idx_user_touch_last_thanks_at ON user_touch (last_thanks_at);`);
 
       console.log("✅ DB bootstrap ok (feedback, user_state)");
   } catch (e) {
@@ -1054,11 +1063,21 @@ async function processThanksQueue(bot: any) {
   try {
     const rows = await q(
       `
-      SELECT tg_user_id
-      FROM user_touch
-      WHERE next_thanks_at IS NOT NULL
-        AND next_thanks_at <= now()
-      LIMIT 50
+      WITH candidates AS (
+        SELECT tg_user_id
+        FROM user_touch
+        WHERE next_thanks_at IS NOT NULL
+          AND next_thanks_at <= now()
+          AND (last_thanks_at IS NULL OR last_thanks_at <= now() - interval '24 hours')
+          AND (thanks_locked_at IS NULL OR thanks_locked_at <= now() - interval '10 minutes')
+        ORDER BY next_thanks_at ASC
+        LIMIT 50
+      )
+      UPDATE user_touch ut
+      SET thanks_locked_at = now()
+      FROM candidates c
+      WHERE ut.tg_user_id = c.tg_user_id
+      RETURNING ut.tg_user_id
       `
     );
 
@@ -1080,16 +1099,26 @@ async function processThanksQueue(bot: any) {
           reply_markup: { inline_keyboard: [[{ text: "🏠 Меню", callback_data: "CB_MAIN_MENU" }]] }
         });
       } catch (e) {
-        // если юзер заблокировал/не доступен — просто не падаем
+        // если юзер заблокировал/не доступен — не падаем, но обязательно снимаем лок
+        await q(
+          `UPDATE user_touch SET thanks_locked_at=NULL WHERE tg_user_id=$1`,
+          [uid]
+        );
+        continue;
       }
 
       await q(
-        `UPDATE user_touch SET last_thanks_at=now(), next_thanks_at=NULL WHERE tg_user_id=$1`,
+        `UPDATE user_touch
+         SET last_thanks_at=now(),
+             thanks_processed_at=now(),
+             next_thanks_at=NULL,
+             thanks_locked_at=NULL
+         WHERE tg_user_id=$1`,
         [uid]
       );
     }
   } catch (e) {
-    // не валим сервер из-за планировщика
+      console.error('[THANKS] queue error', e);
   }
 }
 // --- /THANKS ---
