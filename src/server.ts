@@ -287,9 +287,34 @@ async function handleCompensation(ctx: any, reason: string, days: number) {
   if (!device_id || device_id === 'UNKNOWN') {
     return ctx.editMessageText('⚠️ Пожалуйста, отсканируйте QR на аппарате (так мы привяжем компенсацию к вашей локации).');
   }
+  // anti-abuse: если уже была компенсация за последние 7 дней — переводим на ручную проверку
+  const recent: any[] = await q(
+    `SELECT created_at
+     FROM comp_requests
+     WHERE tg_user_id=$1
+       AND created_at > now() - interval '7 days'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [tg_user_id]
+  );
 
+  if (recent && recent.length > 0) {
+    await q(
+      `INSERT INTO comp_requests (tg_user_id, device_id, reason, status)
+       VALUES ($1,$2,$3,'manual')`,
+      [tg_user_id, device_id, reason]
+    );
+
+    return ctx.editMessageText(
+      '✅ Заявка принята.\n\nМы передали обращение техническому специалисту для проверки работы аппарата.\nПосле проверки мы свяжемся с вами здесь в боте.'
+    );
+  } 
   const { code, expires_at } = await issueCreditForUser(tg_user_id, device_id, reason, days);
-
+  await q(
+    `INSERT INTO comp_requests (tg_user_id, device_id, reason, status)
+     VALUES ($1,$2,$3,'issued')`,
+    [tg_user_id, device_id, reason]
+  );
   await ctx.editMessageText(
     `🎁 Компенсация сервисом
 
@@ -347,6 +372,19 @@ async function ensureDbBootstrap() {
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_tg_user_id ON feedback (tg_user_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_device_id ON feedback (device_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);`);
+
+    // --- comp_requests (anti-abuse for compensations) ---
+    await q(`
+      CREATE TABLE IF NOT EXISTS comp_requests (
+        id BIGSERIAL PRIMARY KEY,
+        tg_user_id BIGINT NOT NULL,
+        device_id TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        status TEXT NOT NULL DEFAULT 'issued' -- issued|manual
+      );
+    `);
+    await q(`CREATE INDEX IF NOT EXISTS idx_comp_requests_user_time ON comp_requests (tg_user_id, created_at DESC);`);
 
     // --- user_state (for flows like "Написать нам") ---
     await q(`
