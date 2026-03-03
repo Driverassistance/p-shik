@@ -194,7 +194,7 @@ app.post('/api/bot/issue-credit', async (req, reply) => {
   await q(
     `UPDATE credits SET status='revoked'
      WHERE tg_user_id=$1 AND device_id=$2 AND status='active'`,
-    [tg_user_id]
+    [tg_user_id, device_id]
   );
 
   let code = '';
