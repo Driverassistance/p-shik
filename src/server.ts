@@ -8,19 +8,16 @@ console.log("🚀 P-SHIK BOOT", {
   commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
   time: new Date().toISOString()
 });
-console.log("🚀 P-SHIK BOOT", {
-  commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
-  time: new Date().toISOString()
-});
+
 async function issueCreditForUser(tg_user_id: number, device_id: string, reason: string, days: number) {
   const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
   // One active code per user: revoke previous active
   await q(
-    `UPDATE credits SET status='revoked'
-     WHERE tg_user_id=$1 AND status='active'`,
-    [tg_user_id, device_id]
-  );
+  `UPDATE credits SET status='revoked'
+   WHERE tg_user_id=$1 AND status='active'`,
+  [tg_user_id]
+);
 
 
 
