@@ -4,6 +4,14 @@ import { config } from './config.js';
 import { runMigrateV1, runMigrateV2 } from './migrate.js';
 import { q } from './db.js';
 
+console.log("🚀 P-SHIK BOOT", {
+  commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
+  time: new Date().toISOString()
+});
+console.log("🚀 P-SHIK BOOT", {
+  commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
+  time: new Date().toISOString()
+});
 async function issueCreditForUser(tg_user_id: number, device_id: string, reason: string, days: number) {
   const expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
