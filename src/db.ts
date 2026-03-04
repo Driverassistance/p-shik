@@ -24,6 +24,11 @@ export const pool = new Pool({
 });
 
 export async function q<T = any>(text: string, params?: any[]) {
-  const res = await pool.query(text, params);
-  return res.rows as T[];
+  try {
+    const res = await pool.query(text, params);
+    return res.rows as T[];
+  } catch (e: any) {
+    console.error('[DB] query failed:', { text, params });
+    throw e;
+  }
 }
