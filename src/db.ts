@@ -24,11 +24,31 @@ export const pool = new Pool({
 });
 
 export async function q<T = any>(text: string, params?: any[]) {
+  // Быстрый детектор: какой максимальный $N в запросе
+  const matches = text.match(/\$(\d+)/g) || [];
+  let maxN = 0;
+  for (const m of matches) {
+    const n = Number(m.slice(1));
+    if (n > maxN) maxN = n;
+  }
+  const got = params?.length ?? 0;
+
+  if (maxN !== got) {
+    console.error('[DB] PARAM_MISMATCH', {
+      maxPlaceholders: maxN,
+      gotParams: got,
+      text,
+      params,
+    });
+    // чтобы сразу было видно в логах и стек не был “левый”
+    throw new Error(`DB_PARAM_MISMATCH expected=${maxN} got=${got}`);
+  }
+
   try {
     const res = await pool.query(text, params);
     return res.rows as T[];
   } catch (e: any) {
-    console.error('[DB] query failed:', { text, params });
+    console.error('[DB] query failed:', { text, params, err: e?.message });
     throw e;
   }
 }
