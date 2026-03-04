@@ -108,9 +108,9 @@ app.post('/webhook/telegram', async (req, reply) => {
     if (update?.message?.text?.startsWith('/start')) {
       const textMsg = update.message.text || '';
       const parts = textMsg.split(' ');
-      const deviceId = parts[1] || null;
+      const deviceId = (parts[1] ? String(parts[1]).trim() : 'UNKNOWN');
 
-      if (deviceId) {
+      if (deviceId && deviceId !== 'UNKNOWN') {
         await q(
           `INSERT INTO devices (device_id) VALUES ($1)
            ON CONFLICT (device_id) DO NOTHING`,
