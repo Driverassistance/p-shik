@@ -324,7 +324,6 @@ try {
     reply_markup: {
       inline_keyboard: [
         [{ text: '💬 Написать в WhatsApp', url: 'https://wa.me/77052744440' }],
-        [{ text: '📞 Позвонить сервис-менеджеру', url: 'tel:+77052744440' }],
         [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
       ]
     }
