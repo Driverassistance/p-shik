@@ -319,8 +319,17 @@ try {
   console.error('Admin notify error', e);
 }
     return ctx.editMessageText(
-      '✅ Заявка принята.\n\nМы передали обращение техническому специалисту для проверки работы аппарата.\nПосле проверки мы свяжемся с вами здесь в боте.'
-    );
+  '✅ Заявка принята.\n\nМы передали обращение техническому специалисту для проверки работы аппарата.\n\nЕсли проблема срочная или пшика действительно не было, пожалуйста, сразу свяжитесь с сервис-менеджером:',
+  {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '💬 Написать в WhatsApp', url: 'https://wa.me/77052744440' }],
+        [{ text: '📞 Позвонить сервис-менеджеру', url: 'tel:+77052744440' }],
+        [{ text: '🏠 Меню', callback_data: 'CB_MAIN_MENU' }]
+      ]
+    }
+  }
+);
   } 
   const { code, expires_at } = await issueCreditForUser(tg_user_id, device_id, reason, days);
   await q(
