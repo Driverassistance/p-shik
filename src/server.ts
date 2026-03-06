@@ -415,9 +415,6 @@ async function ensureDbBootstrap() {
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);`);
 
     // --- service_cases (support tickets) ---
-    await q();
-    await q();
-    await q();
 
     // --- comp_requests (anti-abuse for compensations) ---
     await q(`
@@ -490,7 +487,28 @@ async function ensureDbBootstrap() {
       await q(`ALTER TABLE user_touch ADD COLUMN IF NOT EXISTS thanks_processed_at TIMESTAMPTZ;`);
 
       await q(`CREATE INDEX IF NOT EXISTS idx_user_touch_last_thanks_at ON user_touch (last_thanks_at);`);
+      // --- service_cases (support tickets) ---
+await q(`
+  CREATE TABLE IF NOT EXISTS service_cases (
+    case_id TEXT PRIMARY KEY,
+    tg_user_id BIGINT NOT NULL,
+    device_id TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    closed_at TIMESTAMPTZ
+  );
+`);
 
+await q(`
+  CREATE INDEX IF NOT EXISTS idx_service_cases_user_created_at
+  ON service_cases (tg_user_id, created_at DESC);
+`);
+
+await q(`
+  CREATE INDEX IF NOT EXISTS idx_service_cases_device_created_at
+  ON service_cases (device_id, created_at DESC);
+`);
       console.log("✅ DB bootstrap ok (feedback, user_state)");
   } catch (e) {
     console.error("❌ DB bootstrap failed", e);
