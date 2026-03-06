@@ -17,7 +17,7 @@ async function issueCreditForUser(tg_user_id: number, device_id: string, reason:
   `UPDATE credits SET status='revoked'
    WHERE tg_user_id=$1 AND status='active'`,
   [tg_user_id]
-);
+    );
 
 
 
@@ -483,9 +483,9 @@ bot.command('myid', async (ctx) => {
   return ctx.reply(String(ctx.from.id));
 });
 
-
+bot.start(async (ctx) => {
   const tg_user_id = ctx.from.id;
-  const device_id = extractDeviceIdFromStart(ctx);
+  const device_id = extractDeviceIdFromStart(ctx) || 'UNKNOWN';
 
   // upsert user + last location
   await q(
@@ -493,7 +493,7 @@ bot.command('myid', async (ctx) => {
      VALUES ($1, $2, now(), now())
      ON CONFLICT (tg_user_id)
      DO UPDATE SET last_seen_at=now(), current_device_id=COALESCE(EXCLUDED.current_device_id, users.current_device_id)`,
-    [tg_user_id]
+    [tg_user_id, device_id]
   );
 
   return await ctx.reply(
