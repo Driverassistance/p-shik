@@ -304,6 +304,13 @@ async function handleCompensation(ctx: any, reason: string, days: number) {
   );
 
   if (recent && recent.length > 0) {
+
+    const caseId = 'PSHIK-' + Date.now();
+    await q(
+  `INSERT INTO service_cases (case_id, tg_user_id, device_id, reason)
+   VALUES ($1,$2,$3,$4)`,
+  [caseId, tg_user_id, device_id, reason]
+);
     await q(
       `INSERT INTO comp_requests (tg_user_id, device_id, reason, status)
        VALUES ($1,$2,$3,'manual')`,
@@ -313,13 +320,22 @@ async function handleCompensation(ctx: any, reason: string, days: number) {
 try {
   await bot.telegram.sendMessage(
     Number(process.env.ADMIN_TG_ID || 473294026),
-    `⚠️ Manual compensation\n\nUser: ${tg_user_id}\nDevice: ${device_id}\nReason: ${reason}`
+    `⚠️ Manual compensation
+Case: \n\nUser: ${tg_user_id}\nDevice: ${device_id}\nReason: ${reason}`
   );
 } catch (e) {
   console.error('Admin notify error', e);
 }
     return ctx.editMessageText(
-  '🙏 Приносим извинения за доставленные неудобства.\n\nИногда возможны технические сбои в работе аппарата.\nНаша сервисная команда уже получила уведомление и занимается проверкой.\n\nЧтобы быстрее решить вопрос, пожалуйста, напишите в службу поддержки:',
+`🙏 Приносим извинения за доставленные неудобства.
+
+Иногда возможны технические сбои в работе аппарата.
+Наша сервисная команда уже получила уведомление и занимается проверкой.
+
+Номер вашего обращения: ${caseId}
+
+Чтобы быстрее решить вопрос, пожалуйста, напишите в службу поддержки:`,
+
   {
     reply_markup: {
       inline_keyboard: [
@@ -397,6 +413,11 @@ async function ensureDbBootstrap() {
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_tg_user_id ON feedback (tg_user_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_device_id ON feedback (device_id);`);
     await q(`CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback (created_at);`);
+
+    // --- service_cases (support tickets) ---
+    await q();
+    await q();
+    await q();
 
     // --- comp_requests (anti-abuse for compensations) ---
     await q(`
