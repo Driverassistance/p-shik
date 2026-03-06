@@ -390,10 +390,21 @@ bot.action('CB_PROBLEM_OTHER', async (ctx) => {
   );
 });
 // ================================================================
+// --- DEV: reset my test data ---
+bot.command('reset_me', async (ctx) => {
+  const tg_user_id = ctx.from.id;
 
+  try {
+    await q(`DELETE FROM comp_requests WHERE tg_user_id=$1`, [tg_user_id]);
+    await q(`DELETE FROM service_cases WHERE tg_user_id=$1`, [tg_user_id]);
+    await q(`DELETE FROM credits WHERE tg_user_id=$1`, [tg_user_id]);
 
-
-
+    await ctx.reply('🧹 Тестовые данные очищены. Можно снова проверять компенсации.');
+  } catch (e) {
+    console.error('reset_me failed', e);
+    await ctx.reply('⚠️ Не удалось очистить тестовые данные.');
+  }
+});
 
 // --- DB bootstrap (runs once on server start) ---
 async function ensureDbBootstrap() {
